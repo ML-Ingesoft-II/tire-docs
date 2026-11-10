@@ -1,0 +1,98 @@
+---
+title: Tire - Diagrama de la API REST (tire-backend)
+---
+%% Formato de cada endpoint: METODO /ruta(DTO de entrada) DTO de salida
+classDiagram
+    direction LR
+
+    class Cliente {
+        <<App movil / Panel web>>
+        Authorization: Bearer JWT
+    }
+
+    class SecurityConfig {
+        <<Spring Security>>
+        sesion STATELESS, CORS
+        publicas: registro, sesion, recuperacion
+        resto: autenticado + @PreAuthorize
+    }
+
+    class JwtAuthenticationFilter {
+        <<OncePerRequestFilter>>
+        valida el token, si no 401
+    }
+
+    class AuthController {
+        <<RestController>>
+        +POST /auth/registro(RegistroRequestDto) RegistroResponseDto
+        +POST /auth/sesion(LoginRequestDto) TokenResponseDto
+        +PUT /auth/contrasena(CambioPasswordDto) void
+        +POST /auth/recuperacion(RecuperacionPasswordDto) mensaje
+    }
+
+    class ConductorController {
+        <<RestController - DESPACHADOR>>
+        +POST /conductores(CrearConductorDto) ConductorResponseDto
+        +GET /conductores() List~ConductorResponseDto~
+        +GET /conductores/#123;id#125;() ConductorResponseDto
+        +PATCH /conductores/#123;id#125;(ActualizarConductorDto) ConductorResponseDto
+        +DELETE /conductores/#123;id#125;() ConductorResponseDto
+    }
+
+    class ViajeController {
+        <<RestController - CONDUCTOR>>
+        GET y DELETE tambien DESPACHADOR
+        +POST /viajes(IniciarViajeDto) ViajeResponseDto
+        +GET /viajes() List~ViajeResponseDto~
+        +GET /viajes/#123;id#125;() ViajeResponseDto
+        +PATCH /viajes/#123;id#125;/finalizar() ViajeResponseDto
+        +DELETE /viajes/#123;id#125;() void
+        +POST /viajes/#123;id#125;/telemetria(TelemetriaDto) ViajeResponseDto
+        +POST /viajes/#123;id#125;/eventos(EventoFatigaDto) ViajeResponseDto
+        +PATCH /viajes/#123;id#125;/confirmar-alerta() ViajeResponseDto
+    }
+
+    class FlotaAlertasController {
+        <<RestController - DESPACHADOR>>
+        +GET /flota/estado() EstadoFlotaDto
+        +GET /alertas() List~AlertaCriticaResponseDto~
+        +PATCH /alertas/#123;id#125;/atender(AtenderAlertaDto) AlertaCriticaResponseDto
+        +GET /incidentes(fechaInicio, fechaFin) List~AlertaCriticaResponseDto~
+    }
+
+    class GlobalExceptionHandler {
+        <<RestControllerAdvice - RFC 9457>>
+        400 validacion / ReglaNegocio
+        401 BadCredentials
+        403 AccesoDenegado
+        404 RecursoNoEncontrado
+        409 ConflictoEstado
+        500 error generico
+    }
+
+    class AutenticacionUseCase {
+        <<interface>>
+    }
+    class GestionConductoresUseCase {
+        <<interface>>
+    }
+    class GestionViajesUseCase {
+        <<interface>>
+    }
+    class GestionAlertasUseCase {
+        <<interface>>
+    }
+
+    Cliente --> SecurityConfig : HTTPS
+    SecurityConfig --> JwtAuthenticationFilter
+    JwtAuthenticationFilter --> AuthController
+    JwtAuthenticationFilter --> ConductorController
+    JwtAuthenticationFilter --> ViajeController
+    JwtAuthenticationFilter --> FlotaAlertasController
+
+    AuthController --> AutenticacionUseCase
+    ConductorController --> GestionConductoresUseCase
+    ViajeController --> GestionViajesUseCase
+    FlotaAlertasController --> GestionAlertasUseCase
+
+    GlobalExceptionHandler ..> ViajeController : errores de todos los controladores
