@@ -1,260 +1,123 @@
 ---
-title: Tire - Diagrama de clases de la capa de aplicacion (tire-backend, paquete com.unal.tire.application)
+title: Tire - Diagrama de clases de la capa de aplicacion (tire-backend)
 ---
+%% Columnas: puertos de entrada (casos de uso) -> servicios -> puertos de salida
+%% Los Comando* son records de application.port.in; las entidades estan en diagrama_clases.mmd
 classDiagram
-    direction TB
+    direction LR
 
-    %% ============ application.port.in : puertos de entrada (casos de uso) ============
-    namespace port_in {
-        class AutenticacionUseCase {
-            <<interface>>
-            +registrarUsuario(ComandoRegistro comando) Usuario
-            +iniciarSesion(String email, String password) RespuestaToken
-            +cambiarContrasena(UUID usuarioId, String passwordActual, String passwordNueva) void
-            +solicitarRecuperacion(String email) void
-        }
-
-        class GestionConductoresUseCase {
-            <<interface>>
-            +crear(ComandoCrearConductor comando) Conductor
-            +listarTodos() List~Conductor~
-            +obtenerPorId(UUID id) Conductor
-            +actualizar(UUID id, ComandoActualizarConductor comando) Conductor
-            +desactivar(UUID id) Conductor
-        }
-
-        class GestionViajesUseCase {
-            <<interface>>
-            +iniciarViaje(ComandoIniciarViaje comando) Viaje
-            +listarViajes() List~Viaje~
-            +obtenerViajePorId(UUID id) Viaje
-            +finalizarViaje(UUID id) Viaje
-            +cancelarViaje(UUID id) void
-            +registrarTelemetria(UUID viajeId, ComandoTelemetria comando) Viaje
-            +registrarEventoFatiga(UUID viajeId, ComandoEventoFatiga comando) Viaje
-            +confirmarAlerta(UUID viajeId) Viaje
-        }
-
-        class GestionAlertasUseCase {
-            <<interface>>
-            +listarViajesActivos() List~Viaje~
-            +listarAlertasAbiertas() List~AlertaCritica~
-            +listarIncidentesAtendidos() List~AlertaCritica~
-            +listarIncidentesAtendidos(LocalDateTime fechaInicio, LocalDateTime fechaFin) List~AlertaCritica~
-            +atenderAlerta(UUID alertaId, String notas) AlertaCritica
-        }
-
-        class ComandoRegistro {
-            <<record>>
-            +String nombre
-            +String email
-            +String password
-            +RolUsuario rol
-            +UUID flotaId
-        }
-
-        class ComandoCrearConductor {
-            <<record>>
-            +String nombre
-            +String documento
-            +String correo
-            +String telefono
-            +UUID flotaId
-        }
-
-        class ComandoActualizarConductor {
-            <<record>>
-            +String nombre
-            +String telefono
-            +Boolean activo
-        }
-
-        class ComandoIniciarViaje {
-            <<record>>
-            +UUID conductorId
-            +String origen
-            +String destino
-            +Double latitudInicial
-            +Double longitudInicial
-        }
-
-        class ComandoTelemetria {
-            <<record>>
-            +double latitud
-            +double longitud
-        }
-
-        class ComandoEventoFatiga {
-            <<record>>
-            +Double latitud
-            +Double longitud
-            +double duracionOjosCerradosSegundos
-            +boolean confirmadoPorConductor
-        }
-
-        class RespuestaToken {
-            <<record>>
-            +String accessToken
-            +String tipo
-            +long expiracionSegundos
-            +RolUsuario rol
-            +UUID usuarioId
-            +String nombre
-        }
+    %% ============ Puertos de entrada ============
+    class AutenticacionUseCase {
+        <<interface>>
+        +registrarUsuario(ComandoRegistro) Usuario
+        +iniciarSesion(email, password) RespuestaToken
+        +cambiarContrasena(usuarioId, actual, nueva) void
+        +solicitarRecuperacion(email) void
+    }
+    class GestionConductoresUseCase {
+        <<interface>>
+        +crear(ComandoCrearConductor) Conductor
+        +listarTodos() List~Conductor~
+        +obtenerPorId(id) Conductor
+        +actualizar(id, ComandoActualizarConductor) Conductor
+        +desactivar(id) Conductor
+    }
+    class GestionViajesUseCase {
+        <<interface>>
+        +iniciarViaje(ComandoIniciarViaje) Viaje
+        +listarViajes() List~Viaje~
+        +obtenerViajePorId(id) Viaje
+        +finalizarViaje(id) Viaje
+        +cancelarViaje(id) void
+        +registrarTelemetria(id, ComandoTelemetria) Viaje
+        +registrarEventoFatiga(id, ComandoEventoFatiga) Viaje
+        +confirmarAlerta(id) Viaje
+    }
+    class GestionAlertasUseCase {
+        <<interface>>
+        +listarViajesActivos() List~Viaje~
+        +listarAlertasAbiertas() List~AlertaCritica~
+        +listarIncidentesAtendidos(inicio, fin) List~AlertaCritica~
+        +atenderAlerta(id, notas) AlertaCritica
     }
 
-    %% ============ application.service : implementaciones de los casos de uso ============
-    namespace service {
-        class AutenticacionService {
-            <<Service>>
-            -UsuarioRepositoryPort usuarioRepository
-            -ProveedorAutenticacionPort proveedorAutenticacion
-            -long expiracionMs
-        }
-
-        class GestionConductoresService {
-            <<Service>>
-            -ConductorRepositoryPort conductorRepository
-        }
-
-        class GestionViajesService {
-            <<Service>>
-            -ViajeRepositoryPort viajeRepository
-            -AlertaCriticaRepositoryPort alertaRepository
-            -ConsultorClimaPort consultorClima
-            -abrirAlertaCritica(Viaje viaje) void
-            -cargarViaje(UUID id) Viaje
-        }
-
-        class GestionAlertasService {
-            <<Service>>
-            -ViajeRepositoryPort viajeRepository
-            -AlertaCriticaRepositoryPort alertaRepository
-        }
+    %% ============ Servicios (@Service) ============
+    class AutenticacionService {
+        <<Service>>
+        email unico, password hasheada con BCrypt
+        login: usuario activo, emite JWT
+        nueva password de 8 caracteres o mas
+    }
+    class GestionConductoresService {
+        <<Service>>
+        documento y correo unicos
+        desactivar = soft delete
+    }
+    class GestionViajesService {
+        <<Service>>
+        un solo viaje EN_CURSO por conductor: 409
+        consulta clima en inicio, telemetria y eventos
+        si el viaje queda CRITICO abre AlertaCritica
+    }
+    class GestionAlertasService {
+        <<Service>>
+        atender delega en AlertaCritica.atender()
     }
 
-    %% ============ application.port.out : puertos de salida ============
-    namespace port_out {
-        class UsuarioRepositoryPort {
-            <<interface>>
-            +guardar(Usuario u) Usuario
-            +buscarPorEmail(String email) Optional~Usuario~
-            +buscarPorId(UUID id) Optional~Usuario~
-            +existePorEmail(String email) boolean
-        }
-
-        class ConductorRepositoryPort {
-            <<interface>>
-            +guardar(Conductor conductor) Conductor
-            +buscarPorId(UUID id) Optional~Conductor~
-            +listarTodos() List~Conductor~
-            +listarPorFlota(UUID flotaId) List~Conductor~
-            +existePorDocumento(String documento) boolean
-            +existePorCorreo(String correo) boolean
-        }
-
-        class ViajeRepositoryPort {
-            <<interface>>
-            +guardar(Viaje viaje) Viaje
-            +buscarPorId(UUID id) Optional~Viaje~
-            +listarTodos() List~Viaje~
-            +listarPorEstado(EstadoViaje estado) List~Viaje~
-            +existeViajeEnCursoParaConductor(UUID conductorId) boolean
-        }
-
-        class AlertaCriticaRepositoryPort {
-            <<interface>>
-            +guardar(AlertaCritica alerta) AlertaCritica
-            +buscarPorId(UUID id) Optional~AlertaCritica~
-            +listarPorAtendida(boolean atendida) List~AlertaCritica~
-        }
-
-        class ProveedorAutenticacionPort {
-            <<interface>>
-            +hashearContrasena(String passwordPlano) String
-            +verificarContrasena(String passwordPlano, String passwordHash) boolean
-            +emitirToken(Usuario usuario) String
-            +validarToken(String token) ClaimsAutenticacion
-        }
-
-        class ConsultorClimaPort {
-            <<interface>>
-            +consultarClimaActual(double latitud, double longitud) CondicionClimatica
-        }
-
-        class ClaimsAutenticacion {
-            <<record>>
-            +UUID usuarioId
-            +String email
-            +RolUsuario rol
-            +UUID flotaId
-        }
+    %% ============ Puertos de salida ============
+    class UsuarioRepositoryPort {
+        <<interface>>
+        +guardar(Usuario) Usuario
+        +buscarPorEmail(email) Optional~Usuario~
+        +buscarPorId(id) Optional~Usuario~
+        +existePorEmail(email) boolean
+    }
+    class ProveedorAutenticacionPort {
+        <<interface>>
+        +hashearContrasena(plano) String
+        +verificarContrasena(plano, hash) boolean
+        +emitirToken(Usuario) String
+        +validarToken(token) ClaimsAutenticacion
+    }
+    class ConductorRepositoryPort {
+        <<interface>>
+        +guardar(Conductor) Conductor
+        +buscarPorId(id) Optional~Conductor~
+        +listarTodos() List~Conductor~
+        +existePorDocumento(documento) boolean
+        +existePorCorreo(correo) boolean
+    }
+    class AlertaCriticaRepositoryPort {
+        <<interface>>
+        +guardar(AlertaCritica) AlertaCritica
+        +buscarPorId(id) Optional~AlertaCritica~
+        +listarPorAtendida(boolean) List~AlertaCritica~
+    }
+    class ViajeRepositoryPort {
+        <<interface>>
+        +guardar(Viaje) Viaje
+        +buscarPorId(id) Optional~Viaje~
+        +listarTodos() List~Viaje~
+        +listarPorEstado(EstadoViaje) List~Viaje~
+        +existeViajeEnCursoParaConductor(id) boolean
+    }
+    class ConsultorClimaPort {
+        <<interface>>
+        +consultarClimaActual(lat, lon) CondicionClimatica
     }
 
-    %% ============ Clases del dominio usadas (detalle en diagrama_clases.mmd) ============
-    namespace domain {
-        class Usuario {
-            <<Entidad>>
-        }
-        class Conductor {
-            <<Entidad>>
-        }
-        class Viaje {
-            <<Agregado raiz>>
-        }
-        class EventoFatiga {
-            <<Entidad>>
-        }
-        class AlertaCritica {
-            <<Entidad>>
-        }
-        class Ubicacion {
-            <<value object>>
-        }
-        class CondicionClimatica {
-            <<value object>>
-        }
-    }
-
-    %% ---------- Servicios implementan casos de uso ----------
+    %% ---------- Implementacion de casos de uso ----------
     AutenticacionUseCase <|.. AutenticacionService
     GestionConductoresUseCase <|.. GestionConductoresService
     GestionViajesUseCase <|.. GestionViajesService
     GestionAlertasUseCase <|.. GestionAlertasService
 
-    %% ---------- Casos de uso reciben comandos / devuelven respuestas ----------
-    AutenticacionUseCase ..> ComandoRegistro : recibe
-    AutenticacionUseCase ..> RespuestaToken : devuelve
-    GestionConductoresUseCase ..> ComandoCrearConductor : recibe
-    GestionConductoresUseCase ..> ComandoActualizarConductor : recibe
-    GestionViajesUseCase ..> ComandoIniciarViaje : recibe
-    GestionViajesUseCase ..> ComandoTelemetria : recibe
-    GestionViajesUseCase ..> ComandoEventoFatiga : recibe
-    ProveedorAutenticacionPort ..> ClaimsAutenticacion : devuelve
-
-    %% ---------- Servicios dependen de puertos de salida (inyeccion por constructor) ----------
+    %% ---------- Dependencias inyectadas por constructor ----------
     AutenticacionService --> UsuarioRepositoryPort
     AutenticacionService --> ProveedorAutenticacionPort
     GestionConductoresService --> ConductorRepositoryPort
+    GestionAlertasService --> ViajeRepositoryPort
+    GestionAlertasService --> AlertaCriticaRepositoryPort
     GestionViajesService --> ViajeRepositoryPort
     GestionViajesService --> AlertaCriticaRepositoryPort
     GestionViajesService --> ConsultorClimaPort
-    GestionAlertasService --> ViajeRepositoryPort
-    GestionAlertasService --> AlertaCriticaRepositoryPort
-
-    %% ---------- Servicios usan / crean objetos del dominio ----------
-    AutenticacionService ..> Usuario : crea
-    AutenticacionService ..> RespuestaToken : crea
-    GestionConductoresService ..> Conductor : crea / modifica
-    GestionViajesService ..> Viaje : crea / orquesta
-    GestionViajesService ..> EventoFatiga : crea
-    GestionViajesService ..> AlertaCritica : crea si nivel CRITICO
-    GestionViajesService ..> Ubicacion : crea
-    GestionAlertasService ..> AlertaCritica : atiende
-    GestionAlertasService ..> Viaje : consulta
-
-    %% ---------- Notas ----------
-    note for GestionAlertasService "atenderAlerta: delega en AlertaCritica.atender()<br>listarViajesActivos: viajes EN_CURSO<br>Lanza: RecursoNoEncontrado"
-    note for GestionViajesService "Reglas de orquestacion:<br>- iniciarViaje: un conductor no puede tener dos viajes EN_CURSO (HU-09)<br>- telemetria / evento / inicio: consulta clima via ConsultorClimaPort<br>- registrarEventoFatiga: si el viaje queda en CRITICO abre una AlertaCritica<br>Lanza: ConflictoEstado, RecursoNoEncontrado"
-    note for AutenticacionService "- registrarUsuario: email unico, hashea password<br>- iniciarSesion: usuario activo + password valida, emite JWT<br>- cambiarContrasena: nueva password >= 8 caracteres<br>- expiracionMs viene de jwt.expiration-ms<br>Lanza: ConflictoEstado, RecursoNoEncontrado, ReglaNegocio,<br>BadCredentialsException (Spring Security)"
-    note for GestionConductoresService "crear: documento y correo unicos<br>desactivar: soft delete (activo = false)<br>Lanza: ConflictoEstado, RecursoNoEncontrado"
