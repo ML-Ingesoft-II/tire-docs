@@ -1,0 +1,93 @@
+classDiagram
+    class Viaje {
+        <<Agregado raiz>>
+        -UUID id
+        -UUID conductorId
+        -EstadoViaje estado
+        -NivelAlerta nivelAlerta
+        +registrarTelemetria(Ubicacion, CondicionClimatica)
+        +registrarEventoFatiga(EventoFatiga)
+        +confirmarAlertaConductor()
+        +finalizar(LocalDateTime)
+        +cancelar()
+    }
+
+    class EventoFatiga {
+        -UUID id
+        -LocalDateTime fechaHora
+        -double duracionOjosCerradosSegundos
+        -boolean confirmadoPorConductor
+    }
+
+    class Conductor {
+        -UUID id
+        -String nombre
+        -UUID flotaId
+        -boolean activo
+        +desactivar()
+        +actualizarDatos(nombre, telefono, activo)
+    }
+
+    class AlertaCritica {
+        -UUID id
+        -UUID viajeId
+        -boolean atendida
+        +atender(String notas)
+    }
+
+    class Ubicacion {
+        <<value object>>
+        +double latitud
+        +double longitud
+    }
+
+    class CondicionClimatica {
+        <<value object>>
+        +double temperaturaCelsius
+        +String descripcion
+    }
+
+    class EstadoViaje {
+        <<enumeration>>
+        EN_CURSO
+        FINALIZADO
+        CANCELADO
+    }
+
+    class NivelAlerta {
+        <<enumeration>>
+        NORMAL
+        PRECAUCION
+        CRITICO
+    }
+
+    class EstadoAlertaState {
+        <<interface>>
+        +obtenerNivel() NivelAlerta
+        +registrarMicrosueno(confirmado, cantidad) EstadoAlertaState
+        +confirmarAlerta() EstadoAlertaState
+    }
+
+    class EstadoNormal
+    class EstadoPrecaucion
+    class EstadoCritico
+    class FabricaEstadoAlerta {
+        +desdeNivel(NivelAlerta)$ EstadoAlertaState
+    }
+
+    Viaje "1" *-- "0..*" EventoFatiga : contiene
+    Viaje --> Ubicacion : ultimaUbicacion
+    Viaje --> CondicionClimatica : ultimoClima
+    Viaje --> EstadoViaje
+    Viaje --> NivelAlerta
+    EventoFatiga --> Ubicacion
+    AlertaCritica --> Ubicacion
+    Conductor ..> Viaje : conductorId
+    AlertaCritica ..> Viaje : viajeId
+
+    Viaje ..> EstadoAlertaState : usa (State)
+    Viaje ..> FabricaEstadoAlerta : rehidrata
+    EstadoAlertaState <|.. EstadoNormal
+    EstadoAlertaState <|.. EstadoPrecaucion
+    EstadoAlertaState <|.. EstadoCritico
+    FabricaEstadoAlerta ..> EstadoAlertaState : crea

@@ -60,3 +60,8 @@ Quedan para una versión posterior la calibración facial, el guardado de datos 
 La arquitectura objetivo es de microservicios. Para el MVP se implementa un único backend con arquitectura hexagonal, dividido en cuatro módulos (acceso, flota, viajes y telemetría, y alertas), con base de datos PostgreSQL.
 
 La app analiza el rostro en el teléfono, sin conexión a internet, y el panel consulta periódicamente el estado de la flota. Ambos clientes se comunican con el backend a través de un contrato OpenAPI, que les permite avanzar con un servidor simulado mientras el backend no esté listo.
+
+Para el detalle de componentes:
+
+- **Arquitectura actual (lo que se implementó en el Prototipo 1):** [ARQUITECTURA_ACTUAL.md](prototipo-1/arquitectura/ARQUITECTURA_ACTUAL.md).
+- **Arquitectura objetivo (visión de microservicios para fases posteriores):** [ARQUITECTURA_ANTERIOR.md](prototipo-1/arquitectura/ARQUITECTURA_ANTERIOR.md).

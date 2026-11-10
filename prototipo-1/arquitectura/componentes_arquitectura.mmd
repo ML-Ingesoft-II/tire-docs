@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph Clientes["Clientes (contrato OpenAPI)"]
+        App["App Movil del conductor"]
+        Web["Panel Web del despachador"]
+    end
+
+    subgraph Backend["tire-backend — Arquitectura hexagonal"]
+        Seg["Seguridad JWT / BCrypt"]
+
+        subgraph In["Adaptadores de entrada (REST)"]
+            Auth["AuthController"]
+            Cond["ConductorController"]
+            Viaje["ViajeController"]
+            Flota["FlotaAlertasController"]
+        end
+
+        subgraph Appl["Aplicacion (casos de uso)"]
+            SAuth["Autenticacion"]
+            SCond["Gestion Conductores"]
+            SViaje["Gestion Viajes"]
+            SAlert["Gestion Alertas"]
+        end
+
+        subgraph Dom["Dominio (nucleo puro)"]
+            Model["Modelo y value objects"]
+            State["Estado de alerta (State)"]
+        end
+
+        subgraph Out["Puertos y adaptadores de salida"]
+            Persist["Persistencia (JPA)"]
+            AuthAd["Adapter Seguridad"]
+            ClimaAd["Adapter Open-Meteo"]
+        end
+    end
+
+    subgraph Infra["Infraestructura externa"]
+        DB[("PostgreSQL")]
+        Meteo["API Open-Meteo"]
+        Alert["tire_alert_service (Lab 3)"]
+    end
+
+    App --> Seg
+    Web --> Seg
+    Seg --> In
+
+    Auth --> SAuth
+    Cond --> SCond
+    Viaje --> SViaje
+    Flota --> SAlert
+
+    Appl --> Dom
+    Appl --> Out
+
+    Persist --> DB
+    ClimaAd --> Meteo
+    SAlert -.-> Alert

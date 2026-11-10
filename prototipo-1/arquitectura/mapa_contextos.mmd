@@ -1,0 +1,17 @@
+flowchart TB
+    Acceso["Acceso<br/>Identidad, JWT, roles"]
+    Flota["Flota<br/>Organizacion y conductores"]
+    Monitoreo["Monitoreo de viaje<br/>Viajes, telemetria, fatiga"]
+    Alertas["Alertas<br/>Alertas criticas e incidentes"]
+
+    Acceso -->|"U/S: valida seguridad"| Flota
+    Acceso -->|"U/S: valida seguridad"| Monitoreo
+    Acceso -->|"U/S: valida seguridad"| Alertas
+
+    Flota -->|"U/S: datos de flota (filtro por empresa)"| Monitoreo
+    Flota -->|"U/S: datos de flota (filtro por empresa)"| Alertas
+
+    Monitoreo -->|"U/S: transicion a CRITICO"| Alertas
+
+    classDef ctx fill:#E3F2FD,stroke:#1565C0,stroke-width:2px;
+    class Acceso,Flota,Monitoreo,Alertas ctx;
