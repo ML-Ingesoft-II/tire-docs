@@ -1,93 +1,197 @@
+---
+title: Tire - Diagrama de clases de dominio (tire-backend, paquete com.unal.tire.domain)
+---
 classDiagram
-    class Viaje {
-        <<Agregado raiz>>
-        -UUID id
-        -UUID conductorId
-        -EstadoViaje estado
-        -NivelAlerta nivelAlerta
-        +registrarTelemetria(Ubicacion, CondicionClimatica)
-        +registrarEventoFatiga(EventoFatiga)
-        +confirmarAlertaConductor()
-        +finalizar(LocalDateTime)
-        +cancelar()
+    direction TB
+
+    %% ============ domain.model ============
+    namespace model {
+        class Viaje {
+            <<Agregado raiz>>
+            -UUID id
+            -UUID conductorId
+            -String origen
+            -String destino
+            -EstadoViaje estado
+            -NivelAlerta nivelAlerta
+            -LocalDateTime fechaInicio
+            -LocalDateTime fechaFin
+            -Ubicacion ultimaUbicacion
+            -CondicionClimatica ultimoClima
+            -List~EventoFatiga~ eventosFatiga
+            +registrarTelemetria(Ubicacion ubicacion, CondicionClimatica clima) void
+            +registrarEventoFatiga(EventoFatiga evento) void
+            +confirmarAlertaConductor() void
+            +finalizar(LocalDateTime fechaFin) void
+            +cancelar() void
+            -exigirEnCurso(String mensaje) void
+        }
+
+        class EventoFatiga {
+            <<Entidad>>
+            +double UMBRAL_MICROSUENO_SEGUNDOS = 1.5$
+            -UUID id
+            -UUID viajeId
+            -LocalDateTime fechaHora
+            -Ubicacion ubicacion
+            -double duracionOjosCerradosSegundos
+            -boolean confirmadoPorConductor
+            -CondicionClimatica climaEnRuta
+        }
+
+        class Conductor {
+            <<Entidad>>
+            -UUID id
+            -String nombre
+            -String documento
+            -String correo
+            -String telefono
+            -UUID flotaId
+            -boolean activo
+            -LocalDateTime creadoEn
+            +desactivar() void
+            +actualizarDatos(String nombre, String telefono, Boolean activo) void
+        }
+
+        class AlertaCritica {
+            <<Entidad>>
+            -UUID id
+            -UUID viajeId
+            -UUID conductorId
+            -UUID flotaId
+            -LocalDateTime fechaApertura
+            -LocalDateTime fechaAtencion
+            -Ubicacion ultimaUbicacion
+            -boolean atendida
+            -String notasDespachador
+            +atender(String notas) void
+        }
+
+        class Usuario {
+            <<Entidad>>
+            -UUID id
+            -String email
+            -String passwordHash
+            -String nombre
+            -RolUsuario rol
+            -UUID flotaId
+            -boolean activo
+        }
     }
 
-    class EventoFatiga {
-        -UUID id
-        -LocalDateTime fechaHora
-        -double duracionOjosCerradosSegundos
-        -boolean confirmadoPorConductor
+    %% ============ domain.valueobject ============
+    namespace valueobject {
+        class Ubicacion {
+            <<value object - record>>
+            +double latitud
+            +double longitud
+        }
+
+        class CondicionClimatica {
+            <<value object - record>>
+            +double temperaturaCelsius
+            +double velocidadVientoKmh
+            +String descripcion
+        }
+
+        class EstadoViaje {
+            <<enumeration>>
+            EN_CURSO
+            FINALIZADO
+            CANCELADO
+        }
+
+        class NivelAlerta {
+            <<enumeration>>
+            NORMAL
+            PRECAUCION
+            CRITICO
+        }
+
+        class RolUsuario {
+            <<enumeration>>
+            CONDUCTOR
+            DESPACHADOR
+        }
     }
 
-    class Conductor {
-        -UUID id
-        -String nombre
-        -UUID flotaId
-        -boolean activo
-        +desactivar()
-        +actualizarDatos(nombre, telefono, activo)
+    %% ============ domain.state (patron State) ============
+    namespace state {
+        class EstadoAlertaState {
+            <<interface>>
+            +obtenerNivel() NivelAlerta
+            +registrarMicrosueno(boolean confirmadoPorConductor, int microsuenosRecientes) EstadoAlertaState
+            +confirmarAlerta() EstadoAlertaState
+        }
+
+        class EstadoNormal {
+            <<final>>
+        }
+        class EstadoPrecaucion {
+            <<final>>
+        }
+        class EstadoCritico {
+            <<final>>
+        }
+
+        class FabricaEstadoAlerta {
+            <<final - utilitaria>>
+            -FabricaEstadoAlerta()
+            +desdeNivel(NivelAlerta nivel)$ EstadoAlertaState
+        }
     }
 
-    class AlertaCritica {
-        -UUID id
-        -UUID viajeId
-        -boolean atendida
-        +atender(String notas)
+    %% ============ domain.exception ============
+    namespace exception {
+        class ReglaNegocioException
+        class ConflictoEstadoException
+        class RecursoNoEncontradoException
+        class AccesoDenegadoDominioException
     }
 
-    class Ubicacion {
-        <<value object>>
-        +double latitud
-        +double longitud
+    class RuntimeException {
+        <<java.lang>>
     }
 
-    class CondicionClimatica {
-        <<value object>>
-        +double temperaturaCelsius
-        +String descripcion
-    }
+    %% ---------- Composicion y asociaciones por valor ----------
+    Viaje "1" *-- "0..*" EventoFatiga : eventosFatiga
+    Viaje "1" --> "0..1" Ubicacion : ultimaUbicacion
+    Viaje "1" --> "0..1" CondicionClimatica : ultimoClima
+    Viaje --> EstadoViaje : estado
+    Viaje --> NivelAlerta : nivelAlerta
+    EventoFatiga "1" --> "0..1" Ubicacion : ubicacion
+    EventoFatiga "1" --> "0..1" CondicionClimatica : climaEnRuta
+    AlertaCritica "1" --> "0..1" Ubicacion : ultimaUbicacion
+    Usuario --> RolUsuario : rol
 
-    class EstadoViaje {
-        <<enumeration>>
-        EN_CURSO
-        FINALIZADO
-        CANCELADO
-    }
+    %% ---------- Referencias por identidad (UUID, entre agregados) ----------
+    Viaje "0..*" ..> "1" Conductor : conductorId
+    AlertaCritica "0..*" ..> "1" Viaje : viajeId
+    AlertaCritica "0..*" ..> "0..1" Conductor : conductorId
 
-    class NivelAlerta {
-        <<enumeration>>
-        NORMAL
-        PRECAUCION
-        CRITICO
-    }
-
-    class EstadoAlertaState {
-        <<interface>>
-        +obtenerNivel() NivelAlerta
-        +registrarMicrosueno(confirmado, cantidad) EstadoAlertaState
-        +confirmarAlerta() EstadoAlertaState
-    }
-
-    class EstadoNormal
-    class EstadoPrecaucion
-    class EstadoCritico
-    class FabricaEstadoAlerta {
-        +desdeNivel(NivelAlerta)$ EstadoAlertaState
-    }
-
-    Viaje "1" *-- "0..*" EventoFatiga : contiene
-    Viaje --> Ubicacion : ultimaUbicacion
-    Viaje --> CondicionClimatica : ultimoClima
-    Viaje --> EstadoViaje
-    Viaje --> NivelAlerta
-    EventoFatiga --> Ubicacion
-    AlertaCritica --> Ubicacion
-    Conductor ..> Viaje : conductorId
-    AlertaCritica ..> Viaje : viajeId
-
-    Viaje ..> EstadoAlertaState : usa (State)
-    Viaje ..> FabricaEstadoAlerta : rehidrata
+    %% ---------- Patron State ----------
+    Viaje ..> EstadoAlertaState : delega transiciones
+    Viaje ..> FabricaEstadoAlerta : rehidrata desde nivelAlerta
     EstadoAlertaState <|.. EstadoNormal
     EstadoAlertaState <|.. EstadoPrecaucion
     EstadoAlertaState <|.. EstadoCritico
     FabricaEstadoAlerta ..> EstadoAlertaState : crea
+    EstadoAlertaState ..> NivelAlerta : obtenerNivel()
+
+    %% ---------- Excepciones ----------
+    RuntimeException <|-- ReglaNegocioException
+    RuntimeException <|-- ConflictoEstadoException
+    RuntimeException <|-- RecursoNoEncontradoException
+    RuntimeException <|-- AccesoDenegadoDominioException
+    Viaje ..> ConflictoEstadoException : lanza
+    Viaje ..> ReglaNegocioException : lanza
+    EventoFatiga ..> ReglaNegocioException : lanza
+    Ubicacion ..> ReglaNegocioException : lanza
+    AlertaCritica ..> ConflictoEstadoException : lanza
+
+    %% ---------- Notas ----------
+    note for EventoFatiga "Invariantes (constructor):<br>- fechaHora != null<br>- duracionOjosCerradosSegundos >= 1.5"
+    note for Ubicacion "Invariantes:<br>- latitud en [-90, 90]<br>- longitud en [-180, 180]"
+    note for Viaje "Invariantes:<br>- telemetria, eventos, confirmar y finalizar exigen estado EN_CURSO<br>- cancelar() solo si EN_CURSO y sin eventos de fatiga<br>- fechaFin >= fechaInicio"
+    note for EstadoAlertaState "Transiciones:<br>NORMAL --microsueno confirmado y 1er evento--> PRECAUCION<br>NORMAL --microsueno no confirmado o >=2 eventos--> CRITICO<br>PRECAUCION --microsueno--> CRITICO<br>CRITICO --microsueno--> CRITICO<br>CRITICO --confirmar--> PRECAUCION<br>PRECAUCION --confirmar--> NORMAL<br>NORMAL --confirmar--> NORMAL"
+    note for Usuario "flotaId (aqui, en Conductor y en AlertaCritica) es un UUID sin entidad Flota en el dominio. Usuario y Conductor no estan relacionados."
