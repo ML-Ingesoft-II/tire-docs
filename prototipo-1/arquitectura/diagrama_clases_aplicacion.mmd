@@ -37,6 +37,7 @@ classDiagram
         <<interface>>
         +listarViajesActivos() List~Viaje~
         +listarAlertasAbiertas() List~AlertaCritica~
+        +listarIncidentesAtendidos() List~AlertaCritica~
         +listarIncidentesAtendidos(inicio, fin) List~AlertaCritica~
         +atenderAlerta(id, notas) AlertaCritica
     }
@@ -84,6 +85,7 @@ classDiagram
         +guardar(Conductor) Conductor
         +buscarPorId(id) Optional~Conductor~
         +listarTodos() List~Conductor~
+        +listarPorFlota(flotaId) List~Conductor~
         +existePorDocumento(documento) boolean
         +existePorCorreo(correo) boolean
     }
