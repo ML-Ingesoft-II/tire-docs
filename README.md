@@ -35,9 +35,65 @@ El proyecto está organizado como polyrepo: cada componente vive en su propio re
 | Documentación | [tire-docs](https://github.com/ML-Ingesoft-II/tire-docs) | Markdown |
 | Backend y API | [tire-backend](https://github.com/ML-Ingesoft-II/tire-backend) | Java, Spring Boot, PostgreSQL |
 | App del conductor | Por definir | React Native, TypeScript |
-| Panel del despachador | Por definir | React, TypeScript |
+| Panel del despachador | [web-dashboard](https://github.com/ML-Ingesoft-II/web-dashboard) | Next.js, TypeScript |
 | Modelo de visión | Por definir | Por definir |
 | Laboratorio 3 (servicio de alertas) | [lab3-tire-alert-service](https://github.com/ML-Ingesoft-II/lab3-tire-alert-service) | TypeScript, Node.js |
+
+## Cómo ejecutar el sistema en local
+
+El MVP se levanta en dos partes: el **backend** (Spring Boot + PostgreSQL) con
+datos de ejemplo y el **panel del despachador** (Next.js). Clona cada repositorio
+como carpetas hermanas.
+
+### Requisitos
+
+- JDK 17, Docker y Docker Compose (backend).
+- Node.js 18.18+ (panel web).
+
+### 1. Backend con Docker + datos de ejemplo
+
+En [`tire-backend`](https://github.com/ML-Ingesoft-II/tire-backend):
+
+```bash
+# 1. Variables de entorno
+cp .env.example .env
+
+# 2. Base de datos PostgreSQL en contenedor
+docker compose up -d
+
+# 3. Backend con el perfil "seed" (crea el esquema y carga datos de demostración)
+SPRING_PROFILES_ACTIVE=seed ./mvnw spring-boot:run
+```
+
+El backend queda en `http://localhost:8080` (Swagger UI en
+`http://localhost:8080/swagger-ui.html`).
+
+El perfil `seed` ejecuta `SeedDataRunner`, que **recrea el esquema** y siembra la
+flota **Transportes Andinos**, la despachadora **Laura Gómez** y 24 conductores
+con viajes e incidentes de ejemplo. Es idempotente, pero al usar `create-drop`
+borra los datos en cada arranque con ese perfil, así que úsalo solo en desarrollo.
+Para arrancar sin sembrar: `./mvnw spring-boot:run`.
+
+> Todo en contenedores: `docker build -t tire-backend .` construye la imagen del
+> backend (ver el README de `tire-backend` para el detalle).
+
+### 2. Panel del despachador (Next.js)
+
+En [`web-dashboard`](https://github.com/ML-Ingesoft-II/web-dashboard):
+
+```bash
+# La URL del backend se lee de .env.local (TIRE_API_URL=http://localhost:8080)
+npm install
+npm run dev
+```
+
+El panel queda en `http://localhost:3000`. Inicia sesión con las credenciales
+sembradas:
+
+| Campo | Valor |
+|---|---|
+| Correo | `laura.gomez@tandinos.co` |
+| Contraseña | `Password123` |
 
 ## Documentación
 
