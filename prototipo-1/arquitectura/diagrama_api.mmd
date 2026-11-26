@@ -26,14 +26,16 @@ classDiagram
         <<RestController>>
         +POST /auth/registro(RegistroRequestDto) RegistroResponseDto
         +POST /auth/sesion(LoginRequestDto) TokenResponseDto
+        +POST /auth/renovar(RefreshTokenRequestDto) TokenResponseDto
         +PUT /auth/contrasena(CambioPasswordDto) void
-        +POST /auth/recuperacion(RecuperacionPasswordDto) mensaje
+        +POST /auth/recuperacion(RecuperacionPasswordDto) MensajeResponseDto
+        +POST /auth/recuperacion/confirmar(ConfirmarRecuperacionRequestDto) void
     }
 
     class ConductorController {
         <<RestController - DESPACHADOR>>
         +POST /conductores(CrearConductorDto) ConductorResponseDto
-        +GET /conductores() List~ConductorResponseDto~
+        +GET /conductores() PaginaConductoresDto
         +GET /conductores/#123;id#125;() ConductorResponseDto
         +PATCH /conductores/#123;id#125;(ActualizarConductorDto) ConductorResponseDto
         +DELETE /conductores/#123;id#125;() ConductorResponseDto
@@ -41,12 +43,12 @@ classDiagram
 
     class ViajeController {
         <<RestController - CONDUCTOR>>
-        GET y DELETE tambien DESPACHADOR
+        GET tambien DESPACHADOR
         +POST /viajes(IniciarViajeDto) ViajeResponseDto
-        +GET /viajes() List~ViajeResponseDto~
+        +GET /viajes() PaginaViajesDto
+        +GET /viajes/activo() ViajeResponseDto
         +GET /viajes/#123;id#125;() ViajeResponseDto
         +PATCH /viajes/#123;id#125;/finalizar() ViajeResponseDto
-        +DELETE /viajes/#123;id#125;() void
         +POST /viajes/#123;id#125;/telemetria(TelemetriaDto) ViajeResponseDto
         +POST /viajes/#123;id#125;/eventos(EventoFatigaDto) ViajeResponseDto
         +PATCH /viajes/#123;id#125;/confirmar-alerta() ViajeResponseDto
@@ -55,9 +57,10 @@ classDiagram
     class FlotaAlertasController {
         <<RestController - DESPACHADOR>>
         +GET /flota/estado() EstadoFlotaDto
-        +GET /alertas() List~AlertaCriticaResponseDto~
-        +PATCH /alertas/#123;id#125;/atender(AtenderAlertaDto) AlertaCriticaResponseDto
-        +GET /incidentes(fechaInicio, fechaFin) List~AlertaCriticaResponseDto~
+        +GET /alertas() List~AlertaResponseDto~
+        +GET /alertas/#123;id#125;() AlertaDetalleResponseDto
+        +PATCH /alertas/#123;id#125;/atender(AtenderAlertaDto) AlertaResponseDto
+        +GET /eventos(fechaInicio, fechaFin, tipoEvento, page, size) PaginaEventosDto
     }
 
     class GlobalExceptionHandler {

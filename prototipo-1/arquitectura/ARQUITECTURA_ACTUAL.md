@@ -42,8 +42,7 @@ desplegables por separado.
 - **App Móvil del conductor** (React Native): captura de cámara, inferencia de visión
   (EAR) y alarma sonora se ejecutan **localmente en el teléfono**, sin enviar video ni
   imágenes a la red. Envía al backend telemetría, eventos de fatiga y confirmaciones.
-- **Panel Web del despachador** (React SPA): supervisa el estado de la flota y gestiona
-  las alertas críticas.
+- **Panel Web del despachador** (`web-dashboard`): aplicación construida con **Next.js 14 (App Router, React 18 y TypeScript)** que actúa como BFF/Proxy mediante *Route Handlers* (`/api/*`) y cookies `HttpOnly` para proteger los JWT (no una SPA pura de React). Supervisa el estado de la flota y gestiona las alertas críticas.
 
 Ambos se comunican con el backend mediante el contrato **OpenAPI 3.0.3** (`openapi.yaml`).
 
@@ -62,10 +61,10 @@ Controladores REST y sus DTOs:
 
 | Controlador | Rutas | Rol |
 |---|---|---|
-| `AuthController` | `/auth/registro`, `/auth/sesion`, `/auth/contrasena`, `/auth/recuperacion` | Público / autenticado |
-| `ConductorController` | `/conductores`, `/conductores/{id}` | DESPACHADOR |
-| `ViajeController` | `/viajes`, `/viajes/{id}`, `/viajes/{id}/telemetria`, `/viajes/{id}/eventos`, `/viajes/{id}/confirmar-alerta` | CONDUCTOR (y consulta DESPACHADOR) |
-| `FlotaAlertasController` | `/flota/estado`, `/alertas`, `/alertas/{id}/atender`, `/incidentes` | DESPACHADOR |
+| `AuthController` | `/auth/registro`, `/auth/sesion`, `/auth/renovar`, `/auth/contrasena`, `/auth/recuperacion`, `/auth/recuperacion/confirmar` | Público / autenticado |
+| `ConductorController` | `/conductores` (retorna `PaginaConductoresDto`), `/conductores/{id}` | DESPACHADOR |
+| `ViajeController` | `/viajes` (retorna `PaginaViajesDto`), `/viajes/activo`, `/viajes/{id}`, `/viajes/{id}/finalizar`, `/viajes/{id}/telemetria`, `/viajes/{id}/eventos`, `/viajes/{id}/confirmar-alerta` | CONDUCTOR (y consulta DESPACHADOR) |
+| `FlotaAlertasController` | `/flota/estado`, `/alertas`, `/alertas/{id}`, `/alertas/{id}/atender`, `/eventos` (retorna `PaginaEventosDto`) | DESPACHADOR |
 
 Los errores se centralizan en `GlobalExceptionHandler`.
 
@@ -76,14 +75,14 @@ Los errores se centralizan en `GlobalExceptionHandler`.
 - **Servicios (orquestación):** `AutenticacionService`, `GestionConductoresService`,
   `GestionViajesService`, `GestionAlertasService`.
 - **Comandos:** `ComandoRegistro`, `ComandoCrearConductor`, `ComandoActualizarConductor`,
-  `ComandoIniciarViaje`, `ComandoTelemetria`, `ComandoEventoFatiga`.
+  `ComandoIniciarViaje`, `ComandoTelemetria`, `ComandoEventoFatiga`, `ComandoConfirmarAlerta`.
 - **Puertos de salida (`application.port.out`):** `UsuarioRepositoryPort`,
-  `ConductorRepositoryPort`, `ViajeRepositoryPort`, `AlertaCriticaRepositoryPort`,
+  `ConductorRepositoryPort`, `FlotaRepositoryPort`, `ViajeRepositoryPort`, `AlertaCriticaRepositoryPort`,
   `ProveedorAutenticacionPort`, `ConsultorClimaPort`.
 
 ### 2.5 Dominio — `domain` (Java puro)
 
-- **`model`:** `Viaje` (agregado raíz), `Conductor`, `Usuario`, `EventoFatiga`,
+- **`model`:** `Viaje` (agregado raíz), `PerfilConductor`, `Flota`, `Usuario`, `EventoFatiga`,
   `AlertaCritica`.
 - **`valueobject`:** `Ubicacion`, `NivelAlerta`, `EstadoViaje`, `RolUsuario`,
   `CondicionClimatica`.

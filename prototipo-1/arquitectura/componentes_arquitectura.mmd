@@ -33,8 +33,8 @@ flowchart TB
         end
     end
 
-    subgraph Logica["Capa de logica"]
-        Alert["tire_alert_service (Lab 3)"]
+    subgraph Logica["Capa de logica externa"]
+        Alert["tire_alert_service (Lab 3)<br><i>Módulo desacoplado en Node.js/TS</i>"]
     end
 
     subgraph Datos["Capa de datos"]
@@ -59,4 +59,4 @@ flowchart TB
 
     Persist --> DB
     ClimaAd --> Meteo
-    SAlert -.-> Alert
+    SAlert -.->|Evolución Lab 3 (en Prototipo 2 corre en monolito)| Alert

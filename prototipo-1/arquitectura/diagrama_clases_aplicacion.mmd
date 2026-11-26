@@ -9,50 +9,52 @@ classDiagram
     %% ============ Puertos de entrada ============
     class AutenticacionUseCase {
         <<interface>>
-        +registrarUsuario(ComandoRegistro) Usuario
+        +registrarConductorParticular(ComandoRegistro) Usuario
         +iniciarSesion(email, password) RespuestaToken
+        +renovarSesion(refreshToken) RespuestaToken
         +cambiarContrasena(usuarioId, actual, nueva) void
         +solicitarRecuperacion(email) void
+        +confirmarRecuperacion(token, passwordNueva) void
     }
     class GestionConductoresUseCase {
         <<interface>>
-        +crear(ComandoCrearConductor) Conductor
-        +listarTodos() List~Conductor~
-        +obtenerPorId(id) Conductor
-        +actualizar(id, ComandoActualizarConductor) Conductor
-        +desactivar(id) Conductor
+        +crear(ComandoCrearConductor) ConductorVista
+        +listar(flotaId, q, activo, page, size) PaginaConductores
+        +obtenerPorId(flotaId, conductorId) ConductorVista
+        +actualizar(flotaId, conductorId, ComandoActualizarConductor) ConductorVista
+        +desactivar(flotaId, conductorId) ConductorVista
     }
     class GestionViajesUseCase {
         <<interface>>
         +iniciarViaje(ComandoIniciarViaje) Viaje
-        +listarViajes() List~Viaje~
-        +obtenerViajePorId(id) Viaje
-        +finalizarViaje(id) Viaje
-        +cancelarViaje(id) void
-        +registrarTelemetria(id, ComandoTelemetria) Viaje
-        +registrarEventoFatiga(id, ComandoEventoFatiga) Viaje
-        +confirmarAlerta(id) Viaje
+        +listarViajes(usuarioId, rol, flotaId, estado, page, size) PaginaViajes
+        +obtenerViajeActivo(conductorId) Viaje
+        +obtenerViajePorId(usuarioId, rol, flotaId, id) Viaje
+        +finalizarViaje(conductorId, id) Viaje
+        +registrarTelemetria(conductorId, viajeId, ComandoTelemetria) Viaje
+        +registrarEventoFatiga(conductorId, viajeId, ComandoEventoFatiga) Viaje
+        +confirmarAlerta(conductorId, viajeId, ComandoConfirmarAlerta) Viaje
     }
     class GestionAlertasUseCase {
         <<interface>>
-        +listarViajesActivos() List~Viaje~
-        +listarAlertasAbiertas() List~AlertaCritica~
-        +listarIncidentesAtendidos() List~AlertaCritica~
-        +listarIncidentesAtendidos(inicio, fin) List~AlertaCritica~
-        +atenderAlerta(id, notas) AlertaCritica
+        +obtenerEstadoFlota(flotaId) EstadoFlota
+        +listarAlertasAbiertas(flotaId) List~AlertaVista~
+        +obtenerAlerta(flotaId, alertaId) AlertaDetalleVista
+        +atenderAlerta(flotaId, despachadorId, despachadorNombre, alertaId, notas) AlertaVista
+        +historialEventos(flotaId, inicio, fin, tipoEvento, conductorId, page, size) PaginaEventos
     }
 
     %% ============ Servicios (@Service) ============
     class AutenticacionService {
         <<Service>>
         email unico, password hasheada con BCrypt
-        login: usuario activo, emite JWT
+        login: usuario activo, emite accessToken y refreshToken
         nueva password de 8 caracteres o mas
     }
     class GestionConductoresService {
         <<Service>>
-        documento y correo unicos
-        desactivar = soft delete
+        documento y correo unicos por flota
+        desactivar = soft delete (si no hay viaje activo)
     }
     class GestionViajesService {
         <<Service>>
@@ -63,6 +65,7 @@ classDiagram
     class GestionAlertasService {
         <<Service>>
         atender delega en AlertaCritica.atender()
+        filtra alertas e historial por flota del token
     }
 
     %% ============ Puertos de salida ============
@@ -72,28 +75,41 @@ classDiagram
         +buscarPorEmail(email) Optional~Usuario~
         +buscarPorId(id) Optional~Usuario~
         +existePorEmail(email) boolean
+        +listarPorFlotaYRol(flotaId, rol) List~Usuario~
     }
     class ProveedorAutenticacionPort {
         <<interface>>
         +hashearContrasena(plano) String
         +verificarContrasena(plano, hash) boolean
         +emitirToken(Usuario) String
+        +emitirRefreshToken(Usuario) String
         +validarToken(token) ClaimsAutenticacion
+        +validarRefreshToken(refreshToken) UUID
     }
     class ConductorRepositoryPort {
         <<interface>>
-        +guardar(Conductor) Conductor
-        +buscarPorId(id) Optional~Conductor~
-        +listarTodos() List~Conductor~
-        +listarPorFlota(flotaId) List~Conductor~
+        +guardar(PerfilConductor) PerfilConductor
+        +buscarPorId(usuarioId) Optional~PerfilConductor~
+        +listarPorFlota(flotaId) List~PerfilConductor~
+        +listarActivosPorFlota(flotaId) List~PerfilConductor~
         +existePorDocumento(documento) boolean
-        +existePorCorreo(correo) boolean
+        +existePorCorreoEnFlota(correo, flotaId) boolean
+    }
+    class FlotaRepositoryPort {
+        <<interface>>
+        +guardar(Flota) Flota
+        +buscarPorId(id) Optional~Flota~
+        +buscarPorNombre(nombre) Optional~Flota~
+        +contar() long
     }
     class AlertaCriticaRepositoryPort {
         <<interface>>
         +guardar(AlertaCritica) AlertaCritica
         +buscarPorId(id) Optional~AlertaCritica~
         +listarPorAtendida(boolean) List~AlertaCritica~
+        +listarPorFlotaYAtendida(flotaId, boolean) List~AlertaCritica~
+        +listarPorFlota(flotaId) List~AlertaCritica~
+        +buscarPorEventoId(eventoId) Optional~AlertaCritica~
     }
     class ViajeRepositoryPort {
         <<interface>>
@@ -101,7 +117,9 @@ classDiagram
         +buscarPorId(id) Optional~Viaje~
         +listarTodos() List~Viaje~
         +listarPorEstado(EstadoViaje) List~Viaje~
-        +existeViajeEnCursoParaConductor(id) boolean
+        +listarPorConductor(conductorId) List~Viaje~
+        +listarPorConductores(Collection~UUID~) List~Viaje~
+        +existeViajeEnCursoParaConductor(conductorId) boolean
     }
     class ConsultorClimaPort {
         <<interface>>
@@ -117,9 +135,19 @@ classDiagram
     %% ---------- Dependencias inyectadas por constructor ----------
     AutenticacionService --> UsuarioRepositoryPort
     AutenticacionService --> ProveedorAutenticacionPort
+    AutenticacionService --> FlotaRepositoryPort
+
     GestionConductoresService --> ConductorRepositoryPort
+    GestionConductoresService --> UsuarioRepositoryPort
+    GestionConductoresService --> ProveedorAutenticacionPort
+    GestionConductoresService --> ViajeRepositoryPort
+
     GestionAlertasService --> ViajeRepositoryPort
     GestionAlertasService --> AlertaCriticaRepositoryPort
+    GestionAlertasService --> ConductorRepositoryPort
+    GestionAlertasService --> UsuarioRepositoryPort
+
     GestionViajesService --> ViajeRepositoryPort
     GestionViajesService --> AlertaCriticaRepositoryPort
     GestionViajesService --> ConsultorClimaPort
+    GestionViajesService --> UsuarioRepositoryPort

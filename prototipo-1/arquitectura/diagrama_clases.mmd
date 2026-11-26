@@ -30,27 +30,39 @@ classDiagram
         class EventoFatiga {
             <<Entidad>>
             +double UMBRAL_MICROSUENO_SEGUNDOS = 1.5$
+            +double UMBRAL_ROSTRO_NO_VISIBLE_SEGUNDOS = 5.0$
             -UUID id
             -UUID viajeId
+            -TipoEvento tipoEvento
             -LocalDateTime fechaHora
             -Ubicacion ubicacion
-            -double duracionOjosCerradosSegundos
-            -boolean confirmadoPorConductor
+            -double duracionSegundos
+            -Boolean respondio
+            -Double tiempoRespuestaSegundos
             -CondicionClimatica climaEnRuta
         }
 
-        class Conductor {
+        class PerfilConductor {
             <<Entidad>>
-            -UUID id
-            -String nombre
-            -String documento
-            -String correo
+            -UUID usuarioId
+            -String nombres
+            -String apellidos
+            -TipoDocumento tipoDocumento
+            -String numeroDocumento
             -String telefono
+            -String placaVehiculo
             -UUID flotaId
             -boolean activo
             -LocalDateTime creadoEn
+            +getNombreCompleto() String
+            +actualizar(String nombres, String apellidos, TipoDocumento tipoDocumento, String numeroDocumento, String telefono, String placaVehiculo) void
             +desactivar() void
-            +actualizarDatos(String nombre, String telefono, Boolean activo) void
+        }
+
+        class Flota {
+            <<Entidad>>
+            -UUID id
+            -String nombre
         }
 
         class AlertaCritica {
@@ -59,12 +71,18 @@ classDiagram
             -UUID viajeId
             -UUID conductorId
             -UUID flotaId
+            -UUID eventoId
+            -TipoEvento tipoEvento
+            -Double duracionSegundos
+            -LocalDateTime fechaEvento
             -LocalDateTime fechaApertura
             -LocalDateTime fechaAtencion
             -Ubicacion ultimaUbicacion
             -boolean atendida
+            -UUID atendidaPorId
+            -String atendidaPorNombre
             -String notasDespachador
-            +atender(String notas) void
+            +atender(UUID despachadorId, String despachadorNombre, String notas) void
         }
 
         class Usuario {
@@ -76,6 +94,8 @@ classDiagram
             -RolUsuario rol
             -UUID flotaId
             -boolean activo
+            -boolean debeCambiarPassword
+            +cambiarPassword(String nuevoHash) void
         }
     }
 
@@ -92,6 +112,20 @@ classDiagram
             +double temperaturaCelsius
             +double velocidadVientoKmh
             +String descripcion
+        }
+
+        class TipoDocumento {
+            <<enumeration>>
+            CC
+            CE
+            PASAPORTE
+            PEP
+        }
+
+        class TipoEvento {
+            <<enumeration>>
+            MICROSUENO
+            ROSTRO_NO_VISIBLE
         }
 
         class EstadoViaje {
@@ -163,11 +197,16 @@ classDiagram
     EventoFatiga "1" --> "0..1" CondicionClimatica : climaEnRuta
     AlertaCritica "1" --> "0..1" Ubicacion : ultimaUbicacion
     Usuario --> RolUsuario : rol
+    PerfilConductor --> TipoDocumento : tipoDocumento
+    EventoFatiga --> TipoEvento : tipoEvento
+    AlertaCritica --> TipoEvento : tipoEvento
 
     %% ---------- Referencias por identidad (UUID, entre agregados) ----------
-    Viaje "0..*" ..> "1" Conductor : conductorId
+    Viaje "0..*" ..> "1" PerfilConductor : conductorId
     AlertaCritica "0..*" ..> "1" Viaje : viajeId
-    AlertaCritica "0..*" ..> "0..1" Conductor : conductorId
+    AlertaCritica "0..*" ..> "0..1" PerfilConductor : conductorId
+    Flota "1" ..> "0..*" PerfilConductor : flotaId
+    Flota "1" ..> "0..*" Usuario : flotaId
 
     %% ---------- Patron State ----------
     Viaje ..> EstadoAlertaState : delega transiciones
@@ -190,8 +229,8 @@ classDiagram
     AlertaCritica ..> ConflictoEstadoException : lanza
 
     %% ---------- Notas ----------
-    note for EventoFatiga "Invariantes (constructor):<br>- fechaHora != null<br>- duracionOjosCerradosSegundos >= 1.5"
+    note for EventoFatiga "Invariantes (constructor):<br>- fechaHora != null<br>- duracionSegundos >= 1.5 para MICROSUENO<br>- duracionSegundos >= 5.0 para ROSTRO_NO_VISIBLE"
     note for Ubicacion "Invariantes:<br>- latitud en [-90, 90]<br>- longitud en [-180, 180]"
     note for Viaje "Invariantes:<br>- telemetria, eventos, confirmar y finalizar exigen estado EN_CURSO<br>- cancelar() solo si EN_CURSO y sin eventos de fatiga<br>- fechaFin >= fechaInicio"
     note for EstadoAlertaState "Transiciones:<br>NORMAL --microsueno confirmado y 1er evento--> PRECAUCION<br>NORMAL --microsueno no confirmado o >=2 eventos--> CRITICO<br>PRECAUCION --microsueno--> CRITICO<br>CRITICO --microsueno--> CRITICO<br>CRITICO --confirmar--> PRECAUCION<br>PRECAUCION --confirmar--> NORMAL<br>NORMAL --confirmar--> NORMAL"
-    note for Usuario "flotaId (aqui, en Conductor y en AlertaCritica) es un UUID sin entidad Flota en el dominio. Usuario y Conductor no estan relacionados."
+    note for Usuario "Usuario representa las credenciales de acceso. PerfilConductor comparte la identidad usuarioId con Usuario y asocia los datos de negocio del conductor en su Flota."
